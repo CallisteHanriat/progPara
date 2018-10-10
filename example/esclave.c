@@ -96,21 +96,25 @@ void displayArray(int* array, int rank) {
 
 int* voisinDetection(int* grille, int rank, int posX, int posY) {
   int* listDesVoisins = malloc(sizeof(int)*8);
-  int positionAbsolue = rank+1;
+  int positionAbsolue = rank;
 
   for (int i = 0; i<8; i++) {
     listDesVoisins[i] = -1;
   }
 
+  if(positionAbsolue == NB_ESCLAVE) {
+    return listDesVoisins;
+  }
+
   if (positionAbsolue <= LONGUEUR_PLAQUE) { // On regarde pas au dessus.
     printf("rank %d On regarde pas au dessus\n", rank);
-    if (positionAbsolue%LONGUEUR_PLAQUE == 0) { // On regarde pas à droite
+    if (positionAbsolue%LONGUEUR_PLAQUE == LONGUEUR_PLAQUE-1) { // On regarde pas à droite
       printf("rank %d On regarde pas à droite\n", rank);
       listDesVoisins[0] = grille[rank + LONGUEUR_PLAQUE];
       listDesVoisins[1] = grille[rank + LONGUEUR_PLAQUE-1];
       listDesVoisins[2] = grille[rank -1];
       return listDesVoisins;
-    } else if(positionAbsolue%LONGUEUR_PLAQUE == 1) { // On regarde pas à gauche
+    } else if(positionAbsolue%LONGUEUR_PLAQUE == 0) { // On regarde pas à gauche
       printf("rank %d On regarde pas à gauche\n", rank);
       listDesVoisins[0] = grille[rank + 1];
       listDesVoisins[1] = grille[rank + LONGUEUR_PLAQUE+1];
@@ -126,16 +130,16 @@ int* voisinDetection(int* grille, int rank, int posX, int posY) {
       return listDesVoisins;
     }
   }
-  if (positionAbsolue > NB_ESCLAVE - LONGUEUR_PLAQUE) { // On regarde pas en dessous
+  if (positionAbsolue >= NB_ESCLAVE - LONGUEUR_PLAQUE) { // On regarde pas en dessous
     printf("rank %d On regarde pas au dessous\n", rank);
     printf("rank %d rest de division : rank/longueur (%d / %d)= %d\n", rank,rank,LONGUEUR_PLAQUE, positionAbsolue % LONGUEUR_PLAQUE);
-    if (positionAbsolue%LONGUEUR_PLAQUE == 0) { // On regarde pas à droite
+    if (positionAbsolue%LONGUEUR_PLAQUE == LONGUEUR_PLAQUE-1) { // On regarde pas à droite
       printf("rank %d On regarde pas à droite", rank);
       listDesVoisins[0] = grille[rank-LONGUEUR_PLAQUE];
       listDesVoisins[1] = grille[rank-1];
       listDesVoisins[2] = grille[rank-LONGUEUR_PLAQUE - 1];
       return listDesVoisins;
-    } else if (positionAbsolue%LONGUEUR_PLAQUE == 1) { // On regarde pas à gauche
+    } else if (positionAbsolue%LONGUEUR_PLAQUE == 0) { // On regarde pas à gauche
       printf("rank %d On regarde pas à gauche\n", rank);
       listDesVoisins[0] = grille[rank-LONGUEUR_PLAQUE];
       listDesVoisins[1] = grille[rank-LONGUEUR_PLAQUE+1];
@@ -153,7 +157,7 @@ int* voisinDetection(int* grille, int rank, int posX, int posY) {
   }
   if (positionAbsolue>=LONGUEUR_PLAQUE && positionAbsolue <= NB_ESCLAVE - LONGUEUR_PLAQUE) { // Si on est ni tout en haut ni tout en bas
     printf("position absolue pour rank %d : %d\n", rank, positionAbsolue);
-    if (positionAbsolue%LONGUEUR_PLAQUE == 0) { // On regarde pas à droite
+    if (positionAbsolue%LONGUEUR_PLAQUE == LONGUEUR_PLAQUE-1) { // On regarde pas à droite
       printf("rank %d avec visuel sur gauche\n", rank);
       listDesVoisins[0] = grille[rank - LONGUEUR_PLAQUE];
       listDesVoisins[1] = grille[rank + LONGUEUR_PLAQUE];
@@ -161,7 +165,7 @@ int* voisinDetection(int* grille, int rank, int posX, int posY) {
       listDesVoisins[3] = grille[rank - 1];
       listDesVoisins[4] = grille[rank - LONGUEUR_PLAQUE -1];
       return listDesVoisins;
-    } else if (positionAbsolue%LONGUEUR_PLAQUE == 1) { // On regarde pas à gauche
+    } else if (positionAbsolue%LONGUEUR_PLAQUE == 0) { // On regarde pas à gauche
       printf("rank %d avec visuel sur droite\n", rank);
       listDesVoisins[0] = grille[rank -LONGUEUR_PLAQUE];
       listDesVoisins[1] = grille[rank - LONGUEUR_PLAQUE + 1];
