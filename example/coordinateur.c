@@ -6,7 +6,7 @@ void displayArray(int* array);
 
 int main( int argc, char *argv[] )
 {
-  int temperature, myrank, i, j;
+  int temperature, myrank, i, j, longueurDePlaque;
   char return_value=1;
   MPI_Comm parent;
   MPI_Status etat;
@@ -25,6 +25,8 @@ int main( int argc, char *argv[] )
   else {
     MPI_Recv(&temperature, 1, MPI_INT, 0, 0, parent, &etat);
     printf ("Fils %d : Coordinateur : Reception de la temperature %d!\n", myrank, temperature);
+    MPI_Recv(&longueurDePlaque, 1, MPI_INT, 0, 0, parent, &etat);
+    printf ("Fils %d : Coordinateur : Reception de la longueur de la plaque de la part du maître %d!\n", myrank, longueurDePlaque);
     for (i = 0; i<NB_TESTS; i++) {
       for (j = 1; j<NB_ESCLAVE+1; j++) {
         printf("Coordinateur : envoi de la temperature au fils %d\n", j);
@@ -32,8 +34,9 @@ int main( int argc, char *argv[] )
         MPI_Recv(&tableauValeurs[j-1], 1, MPI_INT, j, 0, MPI_COMM_WORLD, &etat);
         printf("Coordinateur : Reception de la temperature d'un fils\n");
       }
+      displayArray(tableauValeurs);
     }
-    displayArray(tableauValeurs);
+    
     MPI_Send(&return_value, 1, MPI_INT, 0, 0, parent); //Envoi du char au père maitre
   }
   MPI_Finalize();

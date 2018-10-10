@@ -6,6 +6,7 @@
 int main( int argc, char *argv[] )
 {
   int i, compteur, nombre;
+  int longueur_plaque = LONGUEUR_PLAQUE, hauteur_plaque=HAUTEUR_PLAQUE;
   MPI_Status etat;
   char return_value=1;
   printf("Pere : J'execute avec un nombre d'esclaves  = %s\n", argv[1]);
@@ -49,10 +50,12 @@ int main( int argc, char *argv[] )
   printf("Pere : Envoi de temperature ambiance vers coordinateur\n"); 
   
   for (i=1; i<NB_ESCLAVE+1; i++) {
-    MPI_Send (&temperature_ambiante,1,MPI_INT,i,0,intercomm); // envoi la température de départ au fils.
+    MPI_Send (&temperature_ambiante,1,MPI_INT,i,0,intercomm); // envoi la température de départ aux esclaves.
+    MPI_Send(&longueur_plaque, 1, MPI_INT, i, 0, intercomm); // envoi de la longueur de la plaque aux esclaves
     printf ("Pere : Envoi vers %d.\n", i);
   }
   MPI_Send(&temperature_ambiante, 1, MPI_INT, 0, 0, intercomm); // envoi de la température ambiante au coordinateur.
+  MPI_Send(&longueur_plaque, 1, MPI_INT, 0, 0, intercomm); // envoi de la longueur de la plaque au coordinateur
 
   MPI_Recv(&return_value, 1, MPI_INT, 0, 0, intercomm, &etat); // bloquage sur reception du char de la part du coordinateur.
 

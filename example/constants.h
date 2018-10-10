@@ -1,2 +1,4 @@
 #define NB_ESCLAVE 12
 #define NB_TESTS 10
+#define LONGUEUR_PLAQUE 4
+#define HAUTEUR_PLAQUE 3
