@@ -2,11 +2,12 @@
 #include <stdio.h>
 #include "constants.h"
 
-void displayArray(int* array);
+void displayArray(double* array);
 
 int main( int argc, char *argv[] )
 {
-  int temperature, myrank, i, j, longueurDePlaque;
+  int myrank, i, j, longueurDePlaque;
+  double temperature;
   char return_value=1;
   MPI_Comm parent;
   MPI_Status etat;
@@ -14,7 +15,7 @@ int main( int argc, char *argv[] )
   MPI_Comm_get_parent (&parent);
   MPI_Comm_rank (MPI_COMM_WORLD,&myrank);  
 
-  int tableauValeurs[NB_ESCLAVE];
+  double tableauValeurs[NB_ESCLAVE];
 
   MPI_Info infos[1] = { MPI_INFO_NULL };
 
@@ -23,17 +24,24 @@ int main( int argc, char *argv[] )
     printf ("Fils %d : Coordinateur : Pas de pere !\n", myrank);
   }
   else {
-    MPI_Recv(&temperature, 1, MPI_INT, 0, 0, parent, &etat);
-    printf ("Fils %d : Coordinateur : Reception de la temperature %d!\n", myrank, temperature);
+    MPI_Recv(&temperature, 1, MPI_DOUBLE, 0, 0, parent, &etat);
+    printf ("Fils %d : Coordinateur : Reception de la temperature %2f!\n", myrank, temperature);
     MPI_Recv(&longueurDePlaque, 1, MPI_INT, 0, 0, parent, &etat);
     printf ("Fils %d : Coordinateur : Reception de la longueur de la plaque de la part du maître %d!\n", myrank, longueurDePlaque);
     for (i = 0; i<NB_TESTS; i++) {
       for (j = 1; j<NB_ESCLAVE+1; j++) {
-        printf("Coordinateur : envoi de la temperature au fils %d\n", j);
-        MPI_Send(&temperature, 1, MPI_INT, j, 0, MPI_COMM_WORLD); // Envoi de la température ambiance aux differents esclaves.
-        MPI_Recv(&tableauValeurs[j-1], 1, MPI_INT, j, 0, MPI_COMM_WORLD, &etat);
-        printf("Coordinateur : Reception de la temperature d'un fils\n");
+        printf("Coordinateur iteration %d : envoi de la temperature au fils %d\n", i, j);
+        MPI_Send(&temperature, 1, MPI_DOUBLE, j, 0, MPI_COMM_WORLD); // Envoi de la température ambiance aux differents esclaves.
+        // MPI_Recv(&tableauValeurs[j-1], 1, MPI_INT, j, 0, MPI_COMM_WORLD, &etat);
       }
+
+      for (j = 1; j<NB_ESCLAVE+1; j++) {
+        printf("Coordinateur iteration %d : attente de reception de temperature esclave %d\n", i, j);
+        MPI_Recv(&tableauValeurs[j-1], 1, MPI_DOUBLE, j, 0, MPI_COMM_WORLD, &etat);
+        // MPI_Recv(&tableauValeurs[j-1], 1, MPI_INT, j, 0, MPI_COMM_WORLD, &etat);
+        printf("Coordinateur : Reception de la temperature mise à jour d'un fils %d : %2f\n", j, tableauValeurs[j-1]);
+      }
+    
       displayArray(tableauValeurs);
     }
     
@@ -43,11 +51,11 @@ int main( int argc, char *argv[] )
   return 0;
 }
 
-void displayArray(int* array) {
+void displayArray(double* array) {
   printf("Tableau courant \n");
   for (int i=0; i<3; i++) {
     for (int j=0; j<4; j++) {
-      printf("%d\t", *array);
+      printf("%2f\t", *array);
       *array++;
     }
     printf("\n");

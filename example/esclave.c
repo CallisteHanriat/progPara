@@ -4,15 +4,16 @@
 #include "math.h"
 #include "stdlib.h"
 
-double averageCalculation(int* tab);
+double averageCalculation(double* tab, double actual_temp);
 void displayArray(int* array, int rank);
 int* voisinDetection(int* grille, int rank, int posX, int posY);
 
 int main( int argc, char *argv[] )
 {
   int posX, posY;
-  int temperature, myrank;
-  int tableauTemperatures[NB_ESCLAVE];
+  int myrank;
+  double temperature;
+  double tableauTemperatures[8];
   int longueurDePlaque;
   int grille[LONGUEUR_PLAQUE * HAUTEUR_PLAQUE];
   char return_value=1;
@@ -21,6 +22,7 @@ int main( int argc, char *argv[] )
   MPI_Init (&argc, &argv);
   MPI_Comm_get_parent (&parent);
   MPI_Comm_rank (MPI_COMM_WORLD,&myrank);
+  MPI_Request req;
 
   if (parent == MPI_COMM_NULL)
   {
@@ -31,7 +33,7 @@ int main( int argc, char *argv[] )
     posY = (myrank-1)%LONGUEUR_PLAQUE;    
    
     for (int i = 0; i<HAUTEUR_PLAQUE*LONGUEUR_PLAQUE; i++) {
-      grille[i] = i;
+      grille[i] = i+1;
     }
 
     displayArray(grille, myrank);
@@ -45,27 +47,38 @@ int main( int argc, char *argv[] )
     }
     printf("\n");
 
-    MPI_Recv(&temperature, 1, MPI_INT, 0, 0, parent, &etat);
-    printf ("Fils %d : Esclave : Reception de la temperature de depart : %d !\n", myrank, temperature);
+    MPI_Recv(&temperature, 1, MPI_DOUBLE, 0, 0, parent, &etat);
+    printf ("Fils %d : Esclave : Reception de la temperature de depart : %2f !\n", myrank, temperature);
     MPI_Recv(&longueurDePlaque, 1, MPI_INT, 0, 0, parent, &etat);
     printf ("Fils %d : Esclave : Reception de la longueur de la plaque de la part du maître %d!\n", myrank, longueurDePlaque);    
     for (int i = 0; i<NB_TESTS; i++) {
       //Détermination position processeur
-      MPI_Recv(&temperature, 1, MPI_INT, 0, 0, parent, &etat);
-      printf ("Fils %d : Esclave : Reception de la temperature de depart : %d !\n", myrank, temperature);
-      MPI_Recv(&longueurDePlaque, 1, MPI_INT, 0, 0, parent, &etat);
-      printf ("Fils %d : Esclave : Reception de la longueur de la plaque de la part du maître %d!\n", myrank, longueurDePlaque);
+      MPI_Recv(&temperature, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, &etat);
+      printf ("Fils %d : Esclave iteration %d: Reception de la temperature de depart : %2f !\n", myrank, i, temperature);
       for (int j = 0; j<8; j++) {
-        if (listDesVoisins[j] != -1 && j != myrank) {
-          // MPI_Recv(&temperature, 1, MPI_INT, j, 0, MPI_COMM_WORLD, &etat);
-          // printf ("Fils %d : Esclave : Reception de la temperature de depart : %d !\n", myrank, temperature);
-          MPI_Send(&temperature, 1, MPI_INT, j, 0, MPI_COMM_WORLD); // Envoie de la temperature aux voisins
-          tableauTemperatures[j - myrank] = temperature;
+        if (listDesVoisins[j] != 0 && listDesVoisins[j] != myrank) {
+          printf("Fils %d : Esclave : Envoie de la temperature au fils %d\n", myrank, listDesVoisins[j]);
+          MPI_Isend(&temperature, 1, MPI_DOUBLE, listDesVoisins[j], 0, MPI_COMM_WORLD, &req); // Envoie de la temperature aux voisins
         }
       }
-      temperature = averageCalculation(tableauTemperatures);
-      printf("Esclave %d: Mise à jour de la temperature %d\n", myrank, temperature);      
+      for(int j = 0; j<8; j++) {
+        // if (listDesVoisins[j] != -1){
+        //   printf("Fils %d : Esclave : Attente de reception de la temperature", myrank);
+        //   MPI_Recv(&temperature, 1, MPI_INT, j, 0, MPI_COMM_WORLD, &etat);
+        //   printf("Fils %d : Esclave : Reception de la temperature provenant de %d\n", myrank, listDesVoisins[j]);
+        // }
+        if (listDesVoisins[j] != 0) {
+          printf("Fils %d : Esclave : Attente de reception du fils %d\n", myrank, listDesVoisins[j]);
+          MPI_Recv(&tableauTemperatures[j], 1, MPI_DOUBLE, listDesVoisins[j], 0, MPI_COMM_WORLD, &etat);
+          printf("Fils %d : Esclave : Reception de la temperature provenant de %d\n", myrank, listDesVoisins[j]);  
+        } else {
+          tableauTemperatures[j] = 20.0;
+        }        
+      }
+      temperature = averageCalculation(tableauTemperatures, temperature);
+      printf("Esclave %d: Mise à jour de la temperature %2f\n", myrank, temperature);      
       printf("Esclave %d: envoi de la temperature au coordinateur\n", myrank);
+      MPI_Send(&temperature, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
     }    
   }
 
@@ -74,13 +87,15 @@ int main( int argc, char *argv[] )
   return 0;
 }
 
-double averageCalculation(int* tab) {
+double averageCalculation(double* tab, double actual_temp) {
   int size_t = sizeof(tab)/sizeof(tab[0]);
-  int sum = 0;
-  for (int i = 0; i<size_t; i++) {
+  double sum = 0;
+  for (int i = 0; i<8; i++) {
     sum = sum + tab[i];
   }
-  return sum/size_t;
+  sum = sum + actual_temp;
+  printf("Current SUM : %2f\n", sum);
+  return sum/9.0;
 }
 
 void displayArray(int* array, int rank) {
@@ -94,95 +109,98 @@ void displayArray(int* array, int rank) {
   }
 }
 
+/**
+ * Cette fonction doit retourner la liste des voisins (les id des voisins)
+ * */
 int* voisinDetection(int* grille, int rank, int posX, int posY) {
   int* listDesVoisins = malloc(sizeof(int)*8);
-  int positionAbsolue = rank;
+  int numeroDansLaGrille = rank;
 
   for (int i = 0; i<8; i++) {
-    listDesVoisins[i] = -1;
+    listDesVoisins[i] = 0;
   }
 
-  if(positionAbsolue == NB_ESCLAVE) {
+/*   if(numeroDansLaGrille == NB_ESCLAVE) {
     return listDesVoisins;
   }
-
-  if (positionAbsolue <= LONGUEUR_PLAQUE) { // On regarde pas au dessus.
+ */
+  if (numeroDansLaGrille <= LONGUEUR_PLAQUE) { // On regarde pas au dessus.
     printf("rank %d On regarde pas au dessus\n", rank);
-    if (positionAbsolue%LONGUEUR_PLAQUE == LONGUEUR_PLAQUE-1) { // On regarde pas à droite
+    if (numeroDansLaGrille%LONGUEUR_PLAQUE == 0) { // On regarde pas à droite
       printf("rank %d On regarde pas à droite\n", rank);
-      listDesVoisins[0] = grille[rank + LONGUEUR_PLAQUE];
-      listDesVoisins[1] = grille[rank + LONGUEUR_PLAQUE-1];
-      listDesVoisins[2] = grille[rank -1];
+      listDesVoisins[0] = grille[rank + LONGUEUR_PLAQUE-1];
+      listDesVoisins[1] = grille[rank + LONGUEUR_PLAQUE-2];
+      listDesVoisins[2] = grille[rank -2];
       return listDesVoisins;
-    } else if(positionAbsolue%LONGUEUR_PLAQUE == 0) { // On regarde pas à gauche
+    } else if(numeroDansLaGrille%LONGUEUR_PLAQUE == 1) { // On regarde pas à gauche
       printf("rank %d On regarde pas à gauche\n", rank);
-      listDesVoisins[0] = grille[rank + 1];
-      listDesVoisins[1] = grille[rank + LONGUEUR_PLAQUE+1];
-      listDesVoisins[2] = grille[rank + LONGUEUR_PLAQUE];
-      return listDesVoisins;
-    } else { // On peut voir à droite et à gauche
-      printf("rank %d On regarde des deux cotes\n", rank);
-      listDesVoisins[0] = grille[rank + 1];
-      listDesVoisins[1] = grille[rank + LONGUEUR_PLAQUE+1];
-      listDesVoisins[2] = grille[rank + LONGUEUR_PLAQUE];
-      listDesVoisins[3] = grille[rank + LONGUEUR_PLAQUE-1];
-      listDesVoisins[4] = grille[rank - 1];
-      return listDesVoisins;
-    }
-  }
-  if (positionAbsolue >= NB_ESCLAVE - LONGUEUR_PLAQUE) { // On regarde pas en dessous
-    printf("rank %d On regarde pas au dessous\n", rank);
-    printf("rank %d rest de division : rank/longueur (%d / %d)= %d\n", rank,rank,LONGUEUR_PLAQUE, positionAbsolue % LONGUEUR_PLAQUE);
-    if (positionAbsolue%LONGUEUR_PLAQUE == LONGUEUR_PLAQUE-1) { // On regarde pas à droite
-      printf("rank %d On regarde pas à droite", rank);
-      listDesVoisins[0] = grille[rank-LONGUEUR_PLAQUE];
-      listDesVoisins[1] = grille[rank-1];
-      listDesVoisins[2] = grille[rank-LONGUEUR_PLAQUE - 1];
-      return listDesVoisins;
-    } else if (positionAbsolue%LONGUEUR_PLAQUE == 0) { // On regarde pas à gauche
-      printf("rank %d On regarde pas à gauche\n", rank);
-      listDesVoisins[0] = grille[rank-LONGUEUR_PLAQUE];
-      listDesVoisins[1] = grille[rank-LONGUEUR_PLAQUE+1];
-      listDesVoisins[2] = grille[rank+1];
-      return listDesVoisins;
-    } else { // On peut voir à droite et à gauche
-      printf("rank %d On regarde des deux cotes\n", rank);
-      listDesVoisins[0] = grille[rank-LONGUEUR_PLAQUE];
-      listDesVoisins[1] = grille[rank-LONGUEUR_PLAQUE+1];
-      listDesVoisins[2] = grille[rank+1];
-      listDesVoisins[3] = grille[rank-1];
-      listDesVoisins[4] = grille[rank-LONGUEUR_PLAQUE-1];
-      return listDesVoisins;
-    }
-  }
-  if (positionAbsolue>=LONGUEUR_PLAQUE && positionAbsolue <= NB_ESCLAVE - LONGUEUR_PLAQUE) { // Si on est ni tout en haut ni tout en bas
-    printf("position absolue pour rank %d : %d\n", rank, positionAbsolue);
-    if (positionAbsolue%LONGUEUR_PLAQUE == LONGUEUR_PLAQUE-1) { // On regarde pas à droite
-      printf("rank %d avec visuel sur gauche\n", rank);
-      listDesVoisins[0] = grille[rank - LONGUEUR_PLAQUE];
+      listDesVoisins[0] = grille[rank];
       listDesVoisins[1] = grille[rank + LONGUEUR_PLAQUE];
       listDesVoisins[2] = grille[rank + LONGUEUR_PLAQUE-1];
-      listDesVoisins[3] = grille[rank - 1];
-      listDesVoisins[4] = grille[rank - LONGUEUR_PLAQUE -1];
       return listDesVoisins;
-    } else if (positionAbsolue%LONGUEUR_PLAQUE == 0) { // On regarde pas à gauche
+    } else { // On peut voir à droite et à gauche
+      printf("rank %d On regarde des deux cotes\n", rank);
+      listDesVoisins[0] = grille[rank];
+      listDesVoisins[1] = grille[rank + LONGUEUR_PLAQUE];
+      listDesVoisins[2] = grille[rank + LONGUEUR_PLAQUE-1];
+      listDesVoisins[3] = grille[rank + LONGUEUR_PLAQUE-2];
+      listDesVoisins[4] = grille[rank-2];
+      return listDesVoisins;
+    }
+  }
+  if (numeroDansLaGrille > NB_ESCLAVE - LONGUEUR_PLAQUE) { // On regarde pas en dessous
+    printf("rank %d On regarde pas au dessous\n", rank);
+    printf("rank %d rest de division : rank/longueur (%d / %d)= %d\n", rank,rank,LONGUEUR_PLAQUE, numeroDansLaGrille % LONGUEUR_PLAQUE);
+    if (numeroDansLaGrille%LONGUEUR_PLAQUE == 0) { // On regarde pas à droite
+      printf("rank %d On regarde pas à droite", rank);
+      listDesVoisins[0] = grille[rank-LONGUEUR_PLAQUE-1];
+      listDesVoisins[1] = grille[rank-2];
+      listDesVoisins[2] = grille[rank-LONGUEUR_PLAQUE - 2];
+      return listDesVoisins;
+    } else if (numeroDansLaGrille%LONGUEUR_PLAQUE == 1) { // On regarde pas à gauche
+      printf("rank %d On regarde pas à gauche\n", rank);
+      listDesVoisins[0] = grille[rank-LONGUEUR_PLAQUE-1];
+      listDesVoisins[1] = grille[rank-LONGUEUR_PLAQUE];
+      listDesVoisins[2] = grille[rank];
+      return listDesVoisins;
+    } else { // On peut voir à droite et à gauche
+      printf("rank %d On regarde des deux cotes\n", rank);
+      listDesVoisins[0] = grille[rank-LONGUEUR_PLAQUE-1];
+      listDesVoisins[1] = grille[rank-LONGUEUR_PLAQUE];      
+      listDesVoisins[2] = grille[rank];
+      listDesVoisins[3] = grille[rank-2];
+      listDesVoisins[4] = grille[rank-LONGUEUR_PLAQUE-2];
+      return listDesVoisins;
+    }
+  }
+  if (numeroDansLaGrille>=LONGUEUR_PLAQUE && numeroDansLaGrille <= NB_ESCLAVE - LONGUEUR_PLAQUE) { // Si on est ni tout en haut ni tout en bas
+    printf("position absolue pour rank %d : %d\n", rank, numeroDansLaGrille);
+    if (numeroDansLaGrille%LONGUEUR_PLAQUE == 0) { // On regarde pas à droite
+      printf("rank %d avec visuel sur gauche\n", rank);
+      listDesVoisins[0] = grille[rank - LONGUEUR_PLAQUE-1];
+      listDesVoisins[1] = grille[rank + LONGUEUR_PLAQUE-1];
+      listDesVoisins[2] = grille[rank + LONGUEUR_PLAQUE-2];
+      listDesVoisins[3] = grille[rank-2];
+      listDesVoisins[4] = grille[rank - LONGUEUR_PLAQUE-2];
+      return listDesVoisins;
+    } else if (numeroDansLaGrille%LONGUEUR_PLAQUE == 1) { // On regarde pas à gauche
       printf("rank %d avec visuel sur droite\n", rank);
-      listDesVoisins[0] = grille[rank -LONGUEUR_PLAQUE];
-      listDesVoisins[1] = grille[rank - LONGUEUR_PLAQUE + 1];
-      listDesVoisins[2] = grille[rank +1];
-      listDesVoisins[3] = grille[rank + LONGUEUR_PLAQUE + 1];
-      listDesVoisins[4] = grille[rank + LONGUEUR_PLAQUE];
+      listDesVoisins[0] = grille[rank -LONGUEUR_PLAQUE-1];
+      listDesVoisins[1] = grille[rank - LONGUEUR_PLAQUE];
+      listDesVoisins[2] = grille[rank];
+      listDesVoisins[3] = grille[rank + LONGUEUR_PLAQUE];
+      listDesVoisins[4] = grille[rank + LONGUEUR_PLAQUE-1];
       return listDesVoisins;
     } else {
       printf("rank %d avec visuel sur tout\n", rank);
-      listDesVoisins[0] = grille[rank - LONGUEUR_PLAQUE];
-      listDesVoisins[1] = grille[rank - LONGUEUR_PLAQUE + 1];
-      listDesVoisins[2] = grille[rank + 1];
-      listDesVoisins[3] = grille[rank + LONGUEUR_PLAQUE + 1];
-      listDesVoisins[4] = grille[rank + LONGUEUR_PLAQUE];
-      listDesVoisins[5] = grille[rank + LONGUEUR_PLAQUE - 1];
-      listDesVoisins[6] = grille[rank - 1];
-      listDesVoisins[7] = grille[rank -LONGUEUR_PLAQUE -1];
+      listDesVoisins[0] = grille[rank - LONGUEUR_PLAQUE - 1];
+      listDesVoisins[1] = grille[rank - LONGUEUR_PLAQUE];      
+      listDesVoisins[2] = grille[rank];
+      listDesVoisins[3] = grille[rank + LONGUEUR_PLAQUE];
+      listDesVoisins[4] = grille[rank + LONGUEUR_PLAQUE-1];
+      listDesVoisins[5] = grille[rank + LONGUEUR_PLAQUE-2];      
+      listDesVoisins[6] = grille[rank - 2];
+      listDesVoisins[7] = grille[rank -LONGUEUR_PLAQUE -2];
       return listDesVoisins;
     }
   }
