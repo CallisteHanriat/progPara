@@ -53,7 +53,7 @@ int main( int argc, char *argv[] )
   
   for (i=1; i<NB_ESCLAVE+1; i++) {
     if (i == 6) {
-      MPI_Send (&temperature_chaude,1,MPI_DOUBLE,i,0,intercomm);  
+      MPI_Send (&temperature_chaude,1,MPI_DOUBLE,i,0,intercomm);  // envoi de la temperature chaude à la sixième case.
     } else {
       MPI_Send (&temperature_depart,1,MPI_DOUBLE,i,0,intercomm); // envoi la température de départ aux esclaves.
     }
@@ -61,6 +61,7 @@ int main( int argc, char *argv[] )
     MPI_Send(&longueur_plaque, 1, MPI_INT, i, 0, intercomm); // envoi de la longueur de la plaque aux esclaves
     printf ("Pere : Envoi vers %d.\n", i);
   }
+  printf("Pere : Envoi de la temperature ambiante vers le coordinateur\n");
   MPI_Send(&temperature_ambiante, 1, MPI_DOUBLE, 0, 0, intercomm); // envoi de la température ambiante au coordinateur.
   MPI_Send(&longueur_plaque, 1, MPI_INT, 0, 0, intercomm); // envoi de la longueur de la plaque au coordinateur
 

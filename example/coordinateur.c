@@ -40,8 +40,7 @@ int main( int argc, char *argv[] )
         MPI_Recv(&tableauValeurs[j-1], 1, MPI_DOUBLE, j, 0, MPI_COMM_WORLD, &etat);
         // MPI_Recv(&tableauValeurs[j-1], 1, MPI_INT, j, 0, MPI_COMM_WORLD, &etat);
         printf("Coordinateur : Reception de la temperature mise à jour d'un fils %d : %2f\n", j, tableauValeurs[j-1]);
-      }
-    
+      }    
       displayArray(tableauValeurs);
     }
     

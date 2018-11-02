@@ -15,6 +15,7 @@ int main( int argc, char *argv[] )
   double temperature;
   double tableauTemperatures[8];
   int longueurDePlaque;
+  double temperature_ambiante;
   int grille[LONGUEUR_PLAQUE * HAUTEUR_PLAQUE];
   char return_value=1;
   MPI_Comm parent;
@@ -53,8 +54,8 @@ int main( int argc, char *argv[] )
     printf ("Fils %d : Esclave : Reception de la longueur de la plaque de la part du maître %d!\n", myrank, longueurDePlaque);    
     for (int i = 0; i<NB_TESTS; i++) {
       //Détermination position processeur
-      MPI_Recv(&temperature, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, &etat);
-      printf ("Fils %d : Esclave iteration %d: Reception de la temperature de depart : %2f !\n", myrank, i, temperature);
+      MPI_Recv(&temperature_ambiante, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, &etat);
+      printf ("Fils %d : Esclave iteration %d: Reception de la temperature ambiante : %2f !\n", myrank, i, temperature);
       for (int j = 0; j<8; j++) {
         if (listDesVoisins[j] != 0 && listDesVoisins[j] != myrank) {
           printf("Fils %d : Esclave : Envoie de la temperature au fils %d\n", myrank, listDesVoisins[j]);
@@ -67,18 +68,18 @@ int main( int argc, char *argv[] )
         //   MPI_Recv(&temperature, 1, MPI_INT, j, 0, MPI_COMM_WORLD, &etat);
         //   printf("Fils %d : Esclave : Reception de la temperature provenant de %d\n", myrank, listDesVoisins[j]);
         // }
-        if (listDesVoisins[j] != 0) {
+        if (listDesVoisins[j] != 0 && listDesVoisins[j] != myrank) {
           printf("Fils %d : Esclave : Attente de reception du fils %d\n", myrank, listDesVoisins[j]);
           MPI_Recv(&tableauTemperatures[j], 1, MPI_DOUBLE, listDesVoisins[j], 0, MPI_COMM_WORLD, &etat);
-          printf("Fils %d : Esclave : Reception de la temperature provenant de %d\n", myrank, listDesVoisins[j]);  
+          printf("Fils %d : Esclave : Reception de la temperature provenant de %d : %2f\n", myrank, listDesVoisins[j], tableauTemperatures[j]);  
         } else {
           tableauTemperatures[j] = 20.0;
         }        
       }
       temperature = averageCalculation(tableauTemperatures, temperature);
-      printf("Esclave %d: Mise à jour de la temperature %2f\n", myrank, temperature);      
+      printf("Esclave %d: Mise à jour de la temperature %2f\n", myrank, temperature);
       printf("Esclave %d: envoi de la temperature au coordinateur\n", myrank);
-      MPI_Send(&temperature, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+      MPI_Send(&temperature, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
     }    
   }
 
@@ -90,7 +91,10 @@ int main( int argc, char *argv[] )
 double averageCalculation(double* tab, double actual_temp) {
   int size_t = sizeof(tab)/sizeof(tab[0]);
   double sum = 0;
+  printf("Calcul de la moyene\n");
   for (int i = 0; i<8; i++) {
+
+    printf("%2f = %2f + %2f (tab[%d])\n", sum, sum, tab[i], i);
     sum = sum + tab[i];
   }
   sum = sum + actual_temp;
