@@ -1,13 +1,15 @@
 #include <mpi.h>
 #include <stdio.h>
+#include "tgmath.h"
 #include "constants.h"
 
 void displayArray(double* array);
-
+double calcul_somme_temperature(double* array);
 int main( int argc, char *argv[] )
 {
   int myrank, i, j, longueurDePlaque;
   double temperature;
+  float somme_temperature, precedente_somme_temperature = 0.0;
   char return_value=1;
   MPI_Comm parent;
   MPI_Status etat;
@@ -34,14 +36,24 @@ int main( int argc, char *argv[] )
         MPI_Send(&temperature, 1, MPI_DOUBLE, j, 0, MPI_COMM_WORLD); // Envoi de la température ambiance aux differents esclaves.
         // MPI_Recv(&tableauValeurs[j-1], 1, MPI_INT, j, 0, MPI_COMM_WORLD, &etat);
       }
-
+      
       for (j = 1; j<NB_ESCLAVE+1; j++) {
         printf("Coordinateur iteration %d : attente de reception de temperature esclave %d\n", i, j);
         MPI_Recv(&tableauValeurs[j-1], 1, MPI_DOUBLE, j, 0, MPI_COMM_WORLD, &etat);
         // MPI_Recv(&tableauValeurs[j-1], 1, MPI_INT, j, 0, MPI_COMM_WORLD, &etat);
         printf("Coordinateur : Reception de la temperature mise à jour d'un fils %d : %2f\n", j, tableauValeurs[j-1]);
       }    
+
       displayArray(tableauValeurs);
+      somme_temperature = calcul_somme_temperature(tableauValeurs);
+      printf("Coordinateur : somme_temperature : %2f\n", somme_temperature);
+
+      if (fabs(somme_temperature - precedente_somme_temperature) < fabs(SEUIL)) {
+        printf("Coordinateur : somme_temperature - precedente_somme_temperature < seuil\n");
+        break;
+      }
+
+      precedente_somme_temperature = somme_temperature;
     }
     
     MPI_Send(&return_value, 1, MPI_INT, 0, 0, parent); //Envoi du char au père maitre
@@ -59,4 +71,14 @@ void displayArray(double* array) {
     }
     printf("\n");
   }
+}
+
+double calcul_somme_temperature(double *array) {
+  double return_value = 0;
+  for (int i = 0; i<NB_ESCLAVE; i++) {
+    return_value += *array;
+    *array++;
+  }
+
+  return return_value;
 }
