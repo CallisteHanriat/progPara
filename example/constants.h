@@ -1,3 +1,8 @@
+/*void readFile() {
+  char* fileName = "1.conf";
+  FILE* f = fopen(fileName, "r");
+}*/
+
 #define NB_ESCLAVE 12
 #define NB_TESTS 10
 #define LONGUEUR_PLAQUE 4

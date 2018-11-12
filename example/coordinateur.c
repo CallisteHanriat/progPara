@@ -2,9 +2,12 @@
 #include <stdio.h>
 #include "tgmath.h"
 #include "constants.h"
+#include "conf.h"
+
 
 void displayArray(double* array);
 double calcul_somme_temperature(double* array);
+
 int main( int argc, char *argv[] )
 {
   int myrank, i, j, longueurDePlaque;
@@ -50,13 +53,20 @@ int main( int argc, char *argv[] )
 
       if (fabs(somme_temperature - precedente_somme_temperature) < fabs(SEUIL)) {
         printf("Coordinateur : somme_temperature - precedente_somme_temperature < seuil\n");
+        double temp = -150.0;
+        for (j = 1; j<NB_ESCLAVE+1; j++) {
+          printf("Coordinateur iteration %d : envoi de la temperature au fils %d\n", i, j);
+          MPI_Send(&temp, 1, MPI_DOUBLE, j, 0, MPI_COMM_WORLD); // Envoi de la température ambiance aux differents esclaves.  
+        }
         break;
       }
 
       precedente_somme_temperature = somme_temperature;
     }
     
+    printf("Coordinateur: Envoi d'un caractere au pere\n");
     MPI_Send(&return_value, 1, MPI_INT, 0, 0, parent); //Envoi du char au père maitre
+
   }
   MPI_Finalize();
   return 0;

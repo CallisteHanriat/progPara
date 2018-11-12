@@ -55,7 +55,11 @@ int main( int argc, char *argv[] )
     for (int i = 0; i<NB_TESTS; i++) {
       //Détermination position processeur
       MPI_Recv(&temperature_ambiante, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, &etat);
-      printf ("Fils %d : Esclave iteration %d: Reception de la temperature ambiante : %2f !\n", myrank, i, temperature);
+      printf ("Fils %d : Esclave iteration %d: Reception de la temperature ambiante : %2f ! ", myrank, i, temperature_ambiante);
+      if(temperature_ambiante < -140.0) {
+        printf("temperature tres froide : break\n");
+        break;
+      }
       for (int j = 0; j<8; j++) {
         if (listDesVoisins[j] != 0 && listDesVoisins[j] != myrank) {
           printf("Fils %d : Esclave : Envoie de la temperature au fils %d\n", myrank, listDesVoisins[j]);

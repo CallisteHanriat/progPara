@@ -2,9 +2,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "constants.h"
+#include <stdlib.h>
 
-int main( int argc, char *argv[] )
-{
+FILE* getFile() {
+  char* fileName = "1.conf";
+  FILE* f = fopen(fileName, "r");
+  return f;
+}
+
+int main( int argc, char *argv[]) {
   int i, compteur, nombre;
   int longueur_plaque = LONGUEUR_PLAQUE, hauteur_plaque=HAUTEUR_PLAQUE;
   double temperature_depart = 30.0;
