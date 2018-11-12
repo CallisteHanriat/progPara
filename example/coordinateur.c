@@ -14,6 +14,7 @@ int main( int argc, char *argv[] )
   double temperature;
   float somme_temperature, precedente_somme_temperature = 0.0;
   char return_value=1;
+  double seuil = SEUIL;
   MPI_Comm parent;
   MPI_Status etat;
   MPI_Init (&argc, &argv);
@@ -29,6 +30,8 @@ int main( int argc, char *argv[] )
     printf ("Fils %d : Coordinateur : Pas de pere !\n", myrank);
   }
   else {
+    MPI_Recv(&seuil, 1, MPI_DOUBLE, 0, 0, parent, &etat);
+    printf("Fils %2f: Coordinateur : Recepetion du seuil de la part du maitre\n", seuil);
     MPI_Recv(&temperature, 1, MPI_DOUBLE, 0, 0, parent, &etat);
     printf ("Fils %d : Coordinateur : Reception de la temperature %2f!\n", myrank, temperature);
     MPI_Recv(&longueurDePlaque, 1, MPI_INT, 0, 0, parent, &etat);
@@ -51,7 +54,7 @@ int main( int argc, char *argv[] )
       somme_temperature = calcul_somme_temperature(tableauValeurs);
       printf("Coordinateur : somme_temperature : %2f\n", somme_temperature);
 
-      if (fabs(somme_temperature - precedente_somme_temperature) < fabs(SEUIL)) {
+      if (fabs(somme_temperature - precedente_somme_temperature) < fabs(seuil)) {
         printf("Coordinateur : somme_temperature - precedente_somme_temperature < seuil\n");
         double temp = -150.0;
         for (j = 1; j<NB_ESCLAVE+1; j++) {

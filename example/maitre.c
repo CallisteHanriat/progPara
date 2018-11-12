@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "constants.h"
+#include "conf.h"
 #include <stdlib.h>
 
 FILE* getFile() {
@@ -12,9 +13,16 @@ FILE* getFile() {
 
 int main( int argc, char *argv[]) {
   int i, compteur, nombre;
-  int longueur_plaque = LONGUEUR_PLAQUE, hauteur_plaque=HAUTEUR_PLAQUE;
+  // int longueur_plaque = LONGUEUR_PLAQUE, hauteur_plaque=HAUTEUR_PLAQUE;
+  FILE* f = getFile();
+  int* taille;
+  taille = read_size(f);
+  int longueur_plaque = taille[0], hauteur_plaque = taille[1];
+  printf("maitre : taille[0] : %d, taille[1] : %d\n", taille[0], taille[1]);
   double temperature_depart = 30.0;
-  double temperature_chaude = 50.0;
+  double temperature_chaude = TEMPERATURE_CHAUDE;
+  double temperature = read_double(f);
+  printf("maitre : lecture de temperature %2f\n", temperature);
   MPI_Status etat;
   char return_value=1;
   printf("Pere : J'execute avec un nombre d'esclaves  = %s\n", argv[1]);
@@ -54,14 +62,21 @@ int main( int argc, char *argv[]) {
   // Le père communique de façon synchrone avec chacun de
   // ses fils en utilisant l'espace de communication intercomm
 
-  double temperature_ambiante = 20;
-  printf("Pere : Envoi de temperature ambiance vers coordinateur\n"); 
+  double temperature_ambiante = read_double(f);
+  printf("Pere : Envoi de temperature ambiance %2f vers coordinateur\n", temperature_ambiante); 
+
+  double seuil = read_double(f);
+  fclose(f);
+  printf("maitre : Capture du seuil %2f\n", seuil);
+
+  MPI_Send(&seuil, 1, MPI_DOUBLE, 0, 0, intercomm);
+  printf("maitre : Envoi du seuil au coordinateur\n");
   
   for (i=1; i<NB_ESCLAVE+1; i++) {
     if (i == 6) {
       MPI_Send (&temperature_chaude,1,MPI_DOUBLE,i,0,intercomm);  // envoi de la temperature chaude à la sixième case.
     } else {
-      MPI_Send (&temperature_depart,1,MPI_DOUBLE,i,0,intercomm); // envoi la température de départ aux esclaves.
+      MPI_Send (&temperature,1,MPI_DOUBLE,i,0,intercomm); // envoi la température de départ aux esclaves.
     }
     
     MPI_Send(&longueur_plaque, 1, MPI_INT, i, 0, intercomm); // envoi de la longueur de la plaque aux esclaves
