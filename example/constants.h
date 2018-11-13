@@ -4,7 +4,7 @@
 }*/
 
 #define NB_ESCLAVE 12
-#define NB_TESTS 10
+#define NB_TESTS 100
 #define LONGUEUR_PLAQUE 4
 #define HAUTEUR_PLAQUE 3
 #define TEMPERATURE_CHAUDE 50
